@@ -1,30 +1,38 @@
 #!/usr/bin/env bash
-#set -Eeuo pipefail
+set -Eexo pipefail
 
 touch /opt/setup/.env
 
-echo 'deb http://deb.debian.org/debian buster-backports main' | tee /etc/apt/sources.list.d/backports.list
-echo "Acquire::http::Proxy \"${http_proxy}\";" | tee /etc/apt/apt.conf.d/30proxy
+[ -z "$http_proxy" ] || echo "Acquire::http::Proxy \"${http_proxy}\";" | tee /etc/apt/apt.conf.d/30proxy
 echo "APT::Install-Recommends \"0\" ; APT::Install-Suggests \"0\" ;" | tee /etc/apt/apt.conf.d/10no-recommend-installs
 
-apt-get update
-apt-get install -yq --no-install-recommends gnupg curl wget sudo ca-certificates postfix supervisor cron openssh-server nano
+apt-get -qq update
+apt-get install -yq --no-install-recommends gnupg curl wget sudo ca-certificates postfix supervisor cron openssh-server \
+  nano lsb-release apt-utils xz-utils
 
-## START Postgres
-#echo "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-#curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+export VERSION=node_14.x
+export KEYRING=/etc/apt/keyrings/nodesource.gpg
+export DISTRIBUTION="$(lsb_release -s -c)"
 
-sudo apt-get update
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o $KEYRING
+gpg --no-default-keyring --keyring "$KEYRING" --list-keys
+
+NODE_MAJOR=20
+echo "deb [signed-by=$KEYRING] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+printf 'Package: *\nPin: origin deb.nodesource.com\nPin-Priority: 600' > /etc/apt/preferences.d/nodesource
+
+curl -fsS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+printf 'Package: *\nPin: origin dl.yarnpkg.com\nPin-Priority: 700' > /etc/apt/preferences.d/yarnpkg
+
+sudo apt-get -qq update
 sudo apt-get -yq upgrade
 
+## START Postgres
 sudo apt-get install -y postgresql postgresql-server-dev-all
 
-sudo update-alternatives --install /usr/bin/postgres postgres /usr/lib/postgresql/11/bin/postgres 10
-sudo update-alternatives --install /usr/bin/initdb initdb /usr/lib/postgresql/11/bin/initdb 10
-sudo update-alternatives --install /usr/bin/postgres postgres /usr/lib/postgresql/12/bin/postgres 20
-sudo update-alternatives --install /usr/bin/initdb initdb /usr/lib/postgresql/12/bin/initdb 20
-sudo update-alternatives --install /usr/bin/postgres postgres /usr/lib/postgresql/13/bin/postgres 30
-sudo update-alternatives --install /usr/bin/initdb initdb /usr/lib/postgresql/13/bin/initdb 40
+sudo update-alternatives --install /usr/bin/postgres postgres /usr/lib/postgresql/1*/bin/postgres 30
+sudo update-alternatives --install /usr/bin/initdb initdb /usr/lib/postgresql/1*/bin/initdb 40
 #ln -s /usr/lib/postgresql/13/bin/postgres /usr/bin/postgres
 #ln -s /usr/lib/postgresql/13/bin/initdb /usr/bin/initdb
 
@@ -32,7 +40,8 @@ sudo locale-gen en_US.UTF-8
 sudo localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 ## END Postgres
 
-sudo rm -rf /var/lib/apt/lists/*
+sudo apt-get install -y --no-install-recommends mosquitto yarn nodejs
+
 sudo useradd -r -M -d /var/lib/gvm -U -G sudo -s /bin/bash gvm
 sudo usermod -aG tty gvm
 sudo usermod -aG sudo gvm
