@@ -26,6 +26,7 @@ sudo apt-get install --no-install-recommends --assume-yes \
     python3 \
     python3-dev \
     python3-pip \
+    python3-lxml \
     gnupg \
     supervisor
 
@@ -44,22 +45,24 @@ sudo chown -R gvm:gvm $OPENVAS_GNUPG_HOME
 # Install required dependencies for gvm-libs
 sudo apt-get install -y --no-install-recommends \
     libglib2.0-dev \
-    graphviz graphviz-dev \
+    graphviz libgraphviz-dev \
     libgpgme-dev \
     libgpgme11 \
     libgnutls28-dev \
     uuid-dev \
-    libssh-gcrypt-dev \
-    libssh-gcrypt-4 \
     libhiredis-dev \
-    libhiredis0.14 \
     libxml2-dev \
     libpcap-dev \
     libnet1-dev \
     libnet1 \
     libpaho-mqtt-dev \
     libpaho-mqtt1.3 \
-    libbsd-dev
+    libbsd-dev \
+    libcjson-dev \
+    libcurl4-gnutls-dev \
+    libcurl3-gnutls \
+    libgcrypt-dev \
+    libssh-dev
 
 # Install optional dependencies for gvm-libs
 sudo apt-get install -y --no-install-recommends \
@@ -69,7 +72,7 @@ sudo apt-get install -y --no-install-recommends \
 
 # Download and install gvm-libs
 curl -fsSL "https://github.com/greenbone/gvm-libs/archive/refs/tags/v${gvm_libs_version}.tar.gz" -o "${SOURCE_DIR}/gvm-libs-${gvm_libs_version}.tar.gz"
-curl -fsSL "https://github.com/greenbone/gvm-libs/releases/download/v${gvm_libs_version}/gvm-libs-v${gvm_libs_version}.tar.gz.asc" -o "${SOURCE_DIR}/gvm-libs-${gvm_libs_version}.tar.gz.asc"
+curl -fsSL "https://github.com/greenbone/gvm-libs/releases/download/v${gvm_libs_version}/gvm-libs-${gvm_libs_version}.tar.gz.asc" -o "${SOURCE_DIR}/gvm-libs-${gvm_libs_version}.tar.gz.asc"
 
 ls -lahr "${SOURCE_DIR}"
 
@@ -90,7 +93,7 @@ cmake "${SOURCE_DIR}/gvm-libs-${gvm_libs_version}" \
     -DLOCALSTATEDIR=/var \
     -DGVM_PID_DIR=/run/gvm
 
-make "-j$(nproc)"
+cmake --build $BUILD_DIR/gvm-libs "-j$(nproc)"
 
 make DESTDIR="${INSTALL_DIR}"/gvm-libs install
 sudo cp -rv ${INSTALL_DIR}/gvm-libs/* /
@@ -101,7 +104,7 @@ sudo apt-get install -y --no-install-recommends \
     libglib2.0-dev \
     libgnutls28-dev \
     libpq-dev \
-    postgresql-server-dev-15 \
+    postgresql-server-dev-all \
     libical-dev \
     libical3 \
     libgpgme-dev \
@@ -127,7 +130,10 @@ sudo apt-get install -y --no-install-recommends \
     smbclient \
     python3-lxml \
     gnutls-bin \
-    xml-twig-tools
+    xml-twig-tools \
+    texlive-fonts-recommended \
+    texlive-latex-extra \
+    xmlstarlet
 
 # Download and install gvmd
 curl -fsSL https://github.com/greenbone/gvmd/archive/refs/tags/v${gvmd_version}.tar.gz -o ${SOURCE_DIR}/gvmd-${gvmd_version}.tar.gz
@@ -176,7 +182,17 @@ cmake ${SOURCE_DIR}/pg-gvm-${pg_gvm_version} \
 make DESTDIR=${INSTALL_DIR}/pg-gvm install
 sudo cp -rv ${INSTALL_DIR}/pg-gvm/* /
 
-# Install required dependencies for gsad & gsa
+# gsa
+curl -fsSL https://github.com/greenbone/gsa/releases/download/v${GSA_VERSION}/gsa-dist-${GSA_VERSION}.tar.gz -o $SOURCE_DIR/gsa-${GSA_VERSION}.tar.gz
+curl -fsSL https://github.com/greenbone/gsa/releases/download/v${GSA_VERSION}/gsa-dist-${GSA_VERSION}.tar.gz.asc -o $SOURCE_DIR/gsa-${GSA_VERSION}.tar.gz.asc
+gpg --verify $SOURCE_DIR/gsa-${GSA_VERSION}.tar.gz.asc $SOURCE_DIR/gsa-${GSA_VERSION}.tar.gz
+
+mkdir -p $SOURCE_DIR/gsa-${GSA_VERSION}
+tar -C $SOURCE_DIR/gsa-${GSA_VERSION} -xvzf $SOURCE_DIR/gsa-${GSA_VERSION}.tar.gz
+sudo mkdir -p $INSTALL_PREFIX/share/gvm/gsad/web/
+sudo cp -rv $SOURCE_DIR/gsa-${GSA_VERSION}/* $INSTALL_PREFIX/share/gvm/gsad/web/
+
+# Install required dependencies for gsad
 sudo apt-get install -y --no-install-recommends \
     libmicrohttpd-dev \
     libmicrohttpd12 \
@@ -184,19 +200,14 @@ sudo apt-get install -y --no-install-recommends \
     libglib2.0-dev \
     libgnutls28-dev
 
-curl -fsSL https://github.com/greenbone/gsa/archive/refs/tags/v${gsa_version}.tar.gz -o ${SOURCE_DIR}/gsa-${gsa_version}.tar.gz
-curl -fsSL https://github.com/greenbone/gsa/releases/download/v${gsa_version}/gsa-${gsa_version}.tar.gz.asc -o ${SOURCE_DIR}/gsa-${gsa_version}.tar.gz.asc
-gpg --verify ${SOURCE_DIR}/gsa-${gsa_version}.tar.gz.asc ${SOURCE_DIR}/gsa-${gsa_version}.tar.gz
-tar -C ${SOURCE_DIR} -xvzf ${SOURCE_DIR}/gsa-${gsa_version}.tar.gz
-
-curl -fsSL https://github.com/greenbone/gsad/archive/refs/tags/v${gsa_version}.tar.gz -o ${SOURCE_DIR}/gsad-${gsa_version}.tar.gz
-curl -fsSL https://github.com/greenbone/gsad/releases/download/v${gsa_version}/gsad-${gsa_version}.tar.gz.asc -o ${SOURCE_DIR}/gsad-${gsa_version}.tar.gz.asc
-gpg --verify ${SOURCE_DIR}/gsad-${gsa_version}.tar.gz.asc ${SOURCE_DIR}/gsad-${gsa_version}.tar.gz
-tar -C ${SOURCE_DIR} -xvzf ${SOURCE_DIR}/gsad-${gsa_version}.tar.gz
+curl -fsSL https://github.com/greenbone/gsad/archive/refs/tags/v${gsad_version}.tar.gz -o ${SOURCE_DIR}/gsad-${gsad_version}.tar.gz
+curl -fsSL https://github.com/greenbone/gsad/releases/download/v${gsad_version}/gsad-${gsad_version}.tar.gz.asc -o ${SOURCE_DIR}/gsad-${gsad_version}.tar.gz.asc
+gpg --verify ${SOURCE_DIR}/gsad-${gsad_version}.tar.gz.asc ${SOURCE_DIR}/gsad-${gsad_version}.tar.gz
+tar -C ${SOURCE_DIR} -xvzf ${SOURCE_DIR}/gsad-${gsad_version}.tar.gz
 
 mkdir -p ${BUILD_DIR}/gsad && cd ${BUILD_DIR}/gsad
 
-cmake ${SOURCE_DIR}/gsad-${gsa_version} \
+cmake ${SOURCE_DIR}/gsad-${gsad_version} \
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
     -DCMAKE_BUILD_TYPE=Release \
     -DSYSCONFDIR=/etc \
@@ -204,35 +215,22 @@ cmake ${SOURCE_DIR}/gsad-${gsa_version} \
     -DGSAD_RUN_DIR=/run/gvm \
     -DLOGROTATE_DIR=/etc/logrotate.d
 
-make -j$(nproc)
+cmake --build $BUILD_DIR/gsad -j$(nproc)
 
+mkdir -p $INSTALL_DIR/gsad
 make DESTDIR=${INSTALL_DIR}/gsad install
-mv ${INSTALL_DIR}/gsad/lib/* ${INSTALL_DIR}/gsad/usr/lib/
-rmdir ${INSTALL_DIR}/gsad/lib
+
 sudo cp -rv ${INSTALL_DIR}/gsad/* /
 
-pushd ${SOURCE_DIR}/gsa-${gsa_version}
-rm -fr ./build
-
-yarn
-yarn build
-
-mkdir -p $INSTALL_PREFIX/share/gvm/gsad/web/
-mv build/* $INSTALL_PREFIX/share/gvm/gsad/web/
-
-popd
-
 # Install required dependencies for openvas-smb
-sudo apt-get install -y --no-install-recommends \
-    gcc-mingw-w64 \
-    libgnutls28-dev \
-    libglib2.0-dev \
-    libpopt-dev \
-    libunistring-dev \
-    heimdal-dev \
-    libgssapi3-heimdal \
-    libhdb9-heimdal \
-    perl-base
+sudo apt install -y \
+  gcc-mingw-w64 \
+  libgnutls28-dev \
+  libglib2.0-dev \
+  libpopt-dev \
+  libunistring-dev \
+  heimdal-multidev \
+  perl-base
 
 curl -fsSL https://github.com/greenbone/openvas-smb/archive/refs/tags/v${openvas_smb_version}.tar.gz -o ${SOURCE_DIR}/openvas-smb-${openvas_smb_version}.tar.gz
 curl -fsSL https://github.com/greenbone/openvas-smb/releases/download/v${openvas_smb_version}/openvas-smb-v${openvas_smb_version}.tar.gz.asc -o ${SOURCE_DIR}/openvas-smb-${openvas_smb_version}.tar.gz.asc
@@ -246,7 +244,8 @@ cmake ${SOURCE_DIR}/openvas-smb-${openvas_smb_version} \
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
     -DCMAKE_BUILD_TYPE=Release
 
-make -j$(nproc)
+cmake --build $BUILD_DIR/openvas-smb -j$(nproc)
+
 make DESTDIR=${INSTALL_DIR}/openvas-smb install
 sudo cp -rv ${INSTALL_DIR}/openvas-smb/* /
 #rm -rf ${INSTALL_DIR}/*
@@ -264,6 +263,9 @@ sudo apt-get install -y --no-install-recommends \
   nmap \
   libjson-glib-1.0-0 \
   libjson-glib-dev \
+  libcurl4-gnutls-dev \
+  libbsd-dev \
+  krb5-multidev \
   libglib2.0-bin \
   libglib2.0-dev
 
@@ -293,6 +295,9 @@ make -j$(nproc)
 make DESTDIR=${INSTALL_DIR}/openvas-scanner install
 sudo cp -rv ${INSTALL_DIR}/openvas-scanner/* /
 #rm -rf ${INSTALL_DIR}/*
+
+printf "table_driven_lsc = yes\n" | sudo tee /etc/openvas/openvas.conf
+printf "openvasd_server = http://127.0.0.1:3000\n" | sudo tee -a /etc/openvas/openvas.conf
 
 # Install required dependencies for ospd-openvas
 sudo apt-get install -y --no-install-recommends \
@@ -326,25 +331,49 @@ python3 -m pip install --root=$INSTALL_DIR/ospd-openvas --no-warn-script-locatio
 sudo cp -rv ${INSTALL_DIR}/ospd-openvas/* /
 #rm -rf ${INSTALL_DIR}/*
 
-# notus-scanner
-sudo apt-get install -y \
-  python3 \
-  python3-pip \
-  python3-setuptools \
-  python3-paho-mqtt \
-  python3-psutil \
-  python3-gnupg
+# openvasd
 
-curl -f -L https://github.com/greenbone/notus-scanner/archive/refs/tags/v$NOTUS_VERSION.tar.gz -o $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz
-curl -f -L https://github.com/greenbone/notus-scanner/releases/download/v$NOTUS_VERSION/notus-scanner-v$NOTUS_VERSION.tar.gz.asc -o $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz.asc
+curl -f -L https://github.com/greenbone/openvas-scanner/archive/refs/tags/v$OPENVAS_DAEMON.tar.gz -o $SOURCE_DIR/openvas-scanner-$OPENVAS_DAEMON.tar.gz
+curl -f -L https://github.com/greenbone/openvas-scanner/releases/download/v$OPENVAS_DAEMON/openvas-scanner-v$OPENVAS_DAEMON.tar.gz.asc -o $SOURCE_DIR/openvas-scanner-$OPENVAS_DAEMON.tar.gz.asc
 
-gpg --verify $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz.asc $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz
-tar -C $SOURCE_DIR -xvzf $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz
+gpg --verify $SOURCE_DIR/openvas-scanner-$OPENVAS_DAEMON.tar.gz.asc $SOURCE_DIR/openvas-scanner-$OPENVAS_DAEMON.tar.gz
+tar -C $SOURCE_DIR -xvzf $SOURCE_DIR/openvas-scanner-$OPENVAS_DAEMON.tar.gz
 
-cd $SOURCE_DIR/notus-scanner-$NOTUS_VERSION
-mkdir -p $INSTALL_DIR/notus-scanner
-python3 -m pip install --root=$INSTALL_DIR/notus-scanner --no-warn-script-location .
-sudo cp -rv $INSTALL_DIR/notus-scanner/* /
+mkdir -p $INSTALL_DIR/openvasd/usr/local/bin
+cd $SOURCE_DIR/openvas-scanner-$OPENVAS_DAEMON/rust/src/openvasd
+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+export PATH=$PATH:/root/.cargo/bin
+
+cargo build --release
+
+cd $SOURCE_DIR/openvas-scanner-$OPENVAS_DAEMON/rust/src/scannerctl
+cargo build --release
+
+sudo cp -v ../../target/release/openvasd $INSTALL_DIR/openvasd/usr/local/bin/
+sudo cp -v ../../target/release/scannerctl $INSTALL_DIR/openvasd/usr/local/bin/
+sudo cp -rv $INSTALL_DIR/openvasd/* /
+
+## notus-scanner
+#sudo apt-get install -y \
+#  python3 \
+#  python3-pip \
+#  python3-setuptools \
+#  python3-paho-mqtt \
+#  python3-psutil \
+#  python3-gnupg
+#
+#curl -f -L https://github.com/greenbone/notus-scanner/archive/refs/tags/v$NOTUS_VERSION.tar.gz -o $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz
+#curl -f -L https://github.com/greenbone/notus-scanner/releases/download/v$NOTUS_VERSION/notus-scanner-v$NOTUS_VERSION.tar.gz.asc -o $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz.asc
+#
+#gpg --verify $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz.asc $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz
+#tar -C $SOURCE_DIR -xvzf $SOURCE_DIR/notus-scanner-$NOTUS_VERSION.tar.gz
+#
+#cd $SOURCE_DIR/notus-scanner-$NOTUS_VERSION
+#mkdir -p $INSTALL_DIR/notus-scanner
+#python3 -m pip install --root=$INSTALL_DIR/notus-scanner --no-warn-script-location .
+#sudo cp -rv $INSTALL_DIR/notus-scanner/* /
 
 # greenbone-feed-sync
 sudo apt-get install -y \
@@ -369,7 +398,7 @@ sudo apt-get install -y --no-install-recommends \
 
 # Install for root
 mkdir -p $INSTALL_DIR/gvm-tools
-python3 -m pip install --root=$INSTALL_DIR/gvm-tools --no-warn-script-location gvm-tools
+python3 -m pip install --root=$INSTALL_DIR/gvm-tools --no-warn-script-location gvm-tools==${gvm_tools_version}
 sudo cp -rv ${INSTALL_DIR}/gvm-tools/* /
 #rm -rf ${INSTALL_DIR}/*
 
@@ -404,8 +433,8 @@ sudo chmod 6750 /usr/sbin/gvmd
 # SUDO for Scanning
 echo '%gvm ALL = NOPASSWD: /usr/sbin/openvas' | sudo EDITOR='tee -a' visudo
 
-# Install Postgres
-sudo apt-get install -y --no-install-recommends postgresql
+apt-mark manual $(apt-cache depends libssh-dev libhiredis-dev libpq-dev krb5-multidev heimdal-multidev \
+  | awk '/-dev$/ {next} /-multidev$/ {next} /Depends:/ {print $2}')
 
 # Remove required dependencies for gvm-libs
 sudo apt-get purge --auto-remove -y \
@@ -423,24 +452,39 @@ sudo apt-get purge --auto-remove -y \
     libpopt-dev \
     libradcli-dev \
     libsnmp-dev \
-    libssh-gcrypt-dev \
     libunistring-dev \
     libxml2-dev \
     uuid-dev \
     python3-dev \
     build-essential \
-    postgresql-server-dev-all \
-    yarn \
     graphviz-dev \
     cmake
 sudo apt-get purge --auto-remove -y *-dev
 
 sudo apt-get -y autoremove
+
+# Install Postgres
+sudo apt-get install -y --no-install-recommends postgresql
+sudo update-alternatives --install /usr/bin/postgres postgres /usr/lib/postgresql/1*/bin/postgres 30
+sudo update-alternatives --install /usr/bin/initdb initdb /usr/lib/postgresql/1*/bin/initdb 40
+
 sudo apt-get -y clean
 
 echo "/usr/lib64
 /usr/lib" >/etc/ld.so.conf.d/openvas.conf && ldconfig
 
 rm -rf ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR}
-rm -rf /var/lib/apt/lists/*
+rm -rf /var/lib/apt/lists/* /root/.cargo /root/.cache /root/.rustup
 rm -f /etc/apt/apt.conf.d/30proxy
+cd /root
+for f in .profile .bashrc; do
+  sed -i 's/.*HOME\/.cargo.*//g' /root/$f
+done
+
+# verify dependencies
+for f in openvas gvmd gsad; do
+  if ldd "$(which $f)" | grep 'not found'; then
+    echo >&2 "$(which $f) is missing dependencies"
+    exit 1
+  fi
+done

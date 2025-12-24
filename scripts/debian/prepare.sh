@@ -8,7 +8,7 @@ echo "APT::Install-Recommends \"0\" ; APT::Install-Suggests \"0\" ;" | tee /etc/
 
 apt-get -qq update
 apt-get install -yq --no-install-recommends gnupg curl wget sudo ca-certificates postfix supervisor cron openssh-server \
-  nano lsb-release apt-utils xz-utils
+  nano lsb-release apt-utils xz-utils locales
 
 export VERSION=node_14.x
 export KEYRING=/etc/apt/keyrings/nodesource.gpg
@@ -21,26 +21,19 @@ NODE_MAJOR=20
 echo "deb [signed-by=$KEYRING] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
 printf 'Package: *\nPin: origin deb.nodesource.com\nPin-Priority: 600' > /etc/apt/preferences.d/nodesource
 
-curl -fsS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-printf 'Package: *\nPin: origin dl.yarnpkg.com\nPin-Priority: 700' > /etc/apt/preferences.d/yarnpkg
+#curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | sudo tee /etc/apt/keyrings/yarn-archive-keyring.gpg > /dev/null
+#echo "deb [signed-by=/etc/apt/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+#printf 'Package: *\nPin: origin dl.yarnpkg.com\nPin-Priority: 700' > /etc/apt/preferences.d/yarnpkg
 
 sudo apt-get -qq update
 sudo apt-get -yq upgrade
 
-## START Postgres
-sudo apt-get install -y postgresql postgresql-server-dev-all
-
-sudo update-alternatives --install /usr/bin/postgres postgres /usr/lib/postgresql/1*/bin/postgres 30
-sudo update-alternatives --install /usr/bin/initdb initdb /usr/lib/postgresql/1*/bin/initdb 40
-#ln -s /usr/lib/postgresql/13/bin/postgres /usr/bin/postgres
-#ln -s /usr/lib/postgresql/13/bin/initdb /usr/bin/initdb
-
 sudo locale-gen en_US.UTF-8
 sudo localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
-## END Postgres
+sudo update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
-sudo apt-get install -y --no-install-recommends mosquitto yarn nodejs
+sudo apt-get install -y --no-install-recommends mosquitto nodejs
+sudo apt-mark manual mosquitto nodejs
 
 sudo useradd -r -M -d /var/lib/gvm -U -G sudo -s /bin/bash gvm
 sudo usermod -aG tty gvm

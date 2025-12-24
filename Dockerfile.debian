@@ -1,4 +1,4 @@
-FROM debian:12-slim
+FROM debian:13-slim
 
 ENTRYPOINT [ "/opt/setup/scripts/entrypoint.sh" ]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisord.conf"]
@@ -11,14 +11,17 @@ COPY scripts /opt/setup/scripts/
 RUN chmod -R +x /opt/setup/scripts/*.sh
 
 
-ARG gvm_libs_version="22.7.3"
-ARG openvas_scanner_version="22.7.6"
-ARG gvmd_version="23.0.1"
-ARG gsa_version="22.8.0"
-ARG pg_gvm_version="22.6.1"
-ARG openvas_smb_version="22.5.3"
-ARG ospd_openvas="22.6.1"
-ARG NOTUS_VERSION="22.6.0"
+ARG gvm_libs_version="22.22.0"
+ARG gvmd_version="26.0.0"
+ARG pg_gvm_version="22.6.9"
+ARG GSA_VERSION="25.0.0"
+ARG gsad_version="24.3.0"
+ARG openvas_smb_version="22.5.10"
+ARG openvas_scanner_version="23.20.1"
+ARG ospd_openvas="22.9.0"
+#ARG NOTUS_VERSION="22.6.0"
+ARG OPENVAS_DAEMON=23.15.3
+ARG gvm_tools_version=25.4.4 # this should be manually upgraded as the default install instructions do not specify it
 
 ARG SUPVISD=supervisorctl
 ARG GVMD_USER
@@ -40,14 +43,14 @@ ARG DB_PASSWORD=none
 
 ENV gvm_libs_version=${gvm_libs_version} \
     openvas_scanner_version=${openvas_scanner_version} \
-    pggvm_version=${pggvm_version} \
+    pg_gvm_version=${pg_gvm_version} \
     gvmd_version=${gvmd_version} \
-    gsa_version=${gsa_version} \
+    GSA_VERSION=${GSA_VERSION} \
+    OPENVAS_DAEMON=${OPENVAS_DAEMON} \
     pg_gvm_version=${pg_gvm_version} \
     gvm_tools_version=${gvm_tools_version} \
     openvas_smb_version=${openvas_smb_version} \
     ospd_openvas=${ospd_openvas} \
-    python_gvm_version=${python_gvm_version} \
     SYSTEM_DIST=debian \
     SUPVISD=${SUPVISD:-supervisorctl} \
     USERNAME=${USERNAME:-${GVMD_USER:-admin}} \
